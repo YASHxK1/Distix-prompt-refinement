@@ -1,0 +1,63 @@
+.prompt-refinement-button {
+  appearance: none;
+  align-items: center;
+  background: #2563eb;
+  border: 0;
+  border-radius: 999px;
+  box-sizing: border-box;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font: 600 12px/1 system-ui, sans-serif;
+  justify-content: center;
+  margin: 4px 6px;
+  min-height: 30px;
+  padding: 8px 13px;
+  white-space: nowrap;
+  z-index: 20;
+}
+
+.prompt-refinement-button:hover {
+  background: #1d4ed8;
+}
+
+.prompt-refinement-button:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.prompt-refinement-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+#prompt-refinement-notice {
+  align-items: center;
+  background: #111827;
+  border: 1px solid #374151;
+  border-radius: 10px;
+  bottom: 20px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 28%);
+  color: #f9fafb;
+  display: flex;
+  font: 500 13px/1.4 system-ui, sans-serif;
+  gap: 12px;
+  left: 50%;
+  max-width: min(440px, calc(100vw - 32px));
+  padding: 12px 14px;
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+}
+
+#prompt-refinement-notice button {
+  background: transparent;
+  border: 0;
+  color: #93c5fd;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+  white-space: nowrap;
+}

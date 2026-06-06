@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>prompt-refinement</title>
+    <link rel="stylesheet" href="../shared/base.css">
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">AI Gateway</p>
+          <h1>Refine a prompt</h1>
+        </div>
+        <button id="open-settings" class="link-button" type="button">Settings</button>
+      </header>
+
+      <label for="prompt">Prompt</label>
+      <textarea id="prompt" rows="7" placeholder="Paste or write a rough prompt"></textarea>
+      <button id="refine" class="primary" type="button">Refine</button>
+
+      <p id="status" class="status" role="status" hidden></p>
+
+      <section id="result-section" hidden>
+        <div class="result-heading">
+          <label for="result">Refined prompt</label>
+          <button id="copy" class="secondary compact" type="button">Copy</button>
+        </div>
+        <textarea id="result" rows="7" readonly></textarea>
+      </section>
+    </main>
+
+    <script src="../shared/constants.js"></script>
+    <script src="../shared/validation.js"></script>
+    <script src="../shared/ui.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

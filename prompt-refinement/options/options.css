@@ -1,0 +1,75 @@
+body {
+  min-height: 100vh;
+}
+
+main {
+  margin: 64px auto;
+  max-width: 680px;
+  padding: 0 24px 48px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 32px;
+  margin: 0;
+}
+
+.intro {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 12px 0 32px;
+}
+
+form,
+.privacy {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+}
+
+input {
+  margin-top: 8px;
+}
+
+label:not(:first-child) {
+  display: block;
+  margin-top: 22px;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 7px 0 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.privacy {
+  margin-top: 24px;
+}
+
+.privacy h2 {
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+
+.privacy ul {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+  padding-left: 20px;
+}
