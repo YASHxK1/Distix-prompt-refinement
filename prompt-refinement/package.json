@@ -2,7 +2,7 @@
   "name": "prompt-refinement",
   "version": "1.0.0",
   "private": true,
-  "description": "Manifest V3 Chrome extension for refining prompts through Vercel AI Gateway.",
+  "description": "Manifest V3 Chrome extension for refining prompts through Vercel AI Gateway or OpenRouter.",
   "scripts": {
     "test": "node --test --test-isolation=none",
     "check": "node tools/readiness-check.js"

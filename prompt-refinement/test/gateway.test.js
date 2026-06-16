@@ -34,7 +34,16 @@ test("maps authentication, budget, rate, server, and model failures", () => {
   assert.equal(gateway.mapHttpError(401, {}).code, "AUTH_FAILED");
   assert.equal(gateway.mapHttpError(403, {}).code, "AUTH_FAILED");
   assert.equal(gateway.mapHttpError(402, {}).code, "BUDGET_EXHAUSTED");
+  assert.equal(gateway.mapHttpError(408, {}).code, "TIMEOUT");
   assert.equal(gateway.mapHttpError(429, {}).code, "RATE_LIMITED");
   assert.equal(gateway.mapHttpError(503, {}).code, "GATEWAY_UNAVAILABLE");
+  assert.equal(gateway.mapHttpError(503, {}, "openrouter").code, "PROVIDER_UNAVAILABLE");
+  assert.equal(gateway.mapHttpError(404, {}, "openrouter").code, "INVALID_MODEL");
   assert.equal(gateway.mapHttpError(400, { error: { message: "Unknown model" } }).code, "INVALID_MODEL");
+});
+
+test("detects exhausted OpenRouter key limits", () => {
+  assert.equal(gateway.hasExhaustedCredits({ data: { limit_remaining: 0 } }), true);
+  assert.equal(gateway.hasExhaustedCredits({ data: { limit_remaining: 2.5 } }), false);
+  assert.equal(gateway.hasExhaustedCredits({ data: { limit_remaining: null } }), false);
 });

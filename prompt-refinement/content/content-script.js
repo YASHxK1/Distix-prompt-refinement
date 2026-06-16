@@ -5,6 +5,8 @@
 
   const BUTTON_ID = "prompt-refinement-button";
   const NOTICE_ID = "prompt-refinement-notice";
+  const BUTTON_GAP = 8;
+  const DEFAULT_BUTTON_PLACEMENT = { leftOffset: 0, topOffset: 16 };
   let activeRequest = false;
   let observerTimer = 0;
 
@@ -90,20 +92,25 @@
     return button;
   }
 
+  function positionButton(button, composer) {
+    const rect = composer.getBoundingClientRect();
+    const placement = { ...DEFAULT_BUTTON_PLACEMENT, ...adapter.buttonPlacement };
+    button.style.left = `${Math.max(BUTTON_GAP, rect.left - placement.leftOffset)}px`;
+    button.style.top = `${Math.max(BUTTON_GAP, rect.top - button.offsetHeight - BUTTON_GAP - placement.topOffset)}px`;
+  }
+
   function mountButton() {
     const composer = adapter.findComposer();
     if (!composer) return;
 
-    const current = document.getElementById(BUTTON_ID);
-    const mount = adapter.findMount(composer);
-    if (!mount) return;
+    let button = document.getElementById(BUTTON_ID);
+    if (!button) {
+      button = createButton();
+      button.id = BUTTON_ID;
+      document.body.appendChild(button);
+    }
 
-    if (current && current.parentElement === mount) return;
-    current?.remove();
-
-    const button = createButton();
-    button.id = BUTTON_ID;
-    mount.appendChild(button);
+    positionButton(button, composer);
   }
 
   const observer = new MutationObserver(() => {
@@ -112,5 +119,7 @@
   });
 
   observer.observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener("resize", mountButton);
+  window.addEventListener("scroll", mountButton, true);
   mountButton();
 })();

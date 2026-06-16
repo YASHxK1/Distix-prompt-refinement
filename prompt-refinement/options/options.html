@@ -1,49 +1,61 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>prompt-refinement settings</title>
-    <link rel="stylesheet" href="../shared/base.css">
-    <link rel="stylesheet" href="options.css">
-  </head>
-  <body>
-    <main>
-      <p class="eyebrow">prompt-refinement</p>
-      <h1>Settings</h1>
-      <p class="intro">Your API key is stored in Chrome's local extension storage. Prompts are sent to Vercel AI Gateway and the selected model provider when you choose Refine.</p>
 
-      <form id="settings-form">
-        <label for="api-key">Vercel AI Gateway API key</label>
-        <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter your API key">
-        <p id="key-state" class="hint"></p>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>prompt-refinement settings</title>
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="options.css">
+</head>
 
-        <label for="model">Gateway model ID</label>
-        <input id="model" type="text" autocomplete="off" spellcheck="false" placeholder="deepseek/deepseek-v4-pro">
-        <p class="hint">Use a provider/model identifier, for example <code>deepseek/deepseek-v4-pro</code>.</p>
+<body>
+  <main>
+    <p class="eyebrow">prompt-refinement</p>
+    <h1>Settings</h1>
+    <p class="intro">Choose an LLM provider and model. API keys stay in Chrome's local extension storage and are used
+      only when you choose Refine or test the connection.</p>
 
-        <div class="actions">
-          <button class="primary" type="submit">Save</button>
-          <button id="test" class="secondary" type="button">Test connection</button>
-          <button id="clear-key" class="danger" type="button">Clear key</button>
-        </div>
-      </form>
+    <form id="settings-form">
+      <label for="provider">LLM provider</label>
+      <select id="provider">
+        <option value="vercel">Vercel AI Gateway</option>
+        <option value="openrouter">OpenRouter</option>
+      </select>
 
-      <p id="status" class="status" role="status" hidden></p>
+      <label id="api-key-label" for="api-key">Vercel AI Gateway API key</label>
+      <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter your API key">
+      <p id="key-state" class="hint"></p>
 
-      <section class="privacy">
-        <h2>Data handling</h2>
-        <ul>
-          <li>The API key is never sent to supported websites or content scripts.</li>
-          <li>Only the prompt you explicitly refine is sent to AI Gateway.</li>
-          <li>No prompt history, analytics, or accounts are included.</li>
-        </ul>
-      </section>
-    </main>
+      <label id="model-label" for="model">Vercel AI Gateway model ID</label>
+      <input id="model" type="text" autocomplete="off" spellcheck="false" placeholder="deepseek/deepseek-v4-pro">
+      <p id="model-hint" class="hint">Use a provider/model identifier, for example
+        <code>deepseek/deepseek-v4-pro</code>.</p>
 
-    <script src="../shared/constants.js"></script>
-    <script src="../shared/validation.js"></script>
-    <script src="../shared/ui.js"></script>
-    <script src="options.js"></script>
-  </body>
+      <div class="actions">
+        <button class="primary" type="submit">Save</button>
+        <button id="test" class="secondary" type="button">Test connection</button>
+        <button id="clear-key" class="danger" type="button">Clear key</button>
+      </div>
+    </form>
+
+    <p id="status" class="status" role="status" hidden></p>
+
+    <section class="privacy">
+      <h2>Data handling</h2>
+      <ul>
+        <li>The API key is never sent to supported websites or content scripts.</li>
+        <li>Only the prompt you explicitly refine is sent to the selected provider.</li>
+        <li>No prompt history, analytics, or accounts are included.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="../shared/constants.js"></script>
+  <script src="../shared/providers.js"></script>
+  <script src="../shared/validation.js"></script>
+  <script src="../shared/ui.js"></script>
+  <script src="options.js"></script>
+</body>
+
 </html>

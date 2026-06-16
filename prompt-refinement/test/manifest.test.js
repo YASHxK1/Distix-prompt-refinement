@@ -12,12 +12,13 @@ test("manifest requests only the intended extension permission", () => {
   assert.equal(manifest.permissions.includes("scripting"), false);
 });
 
-test("manifest host access is limited to supported sites and AI Gateway", () => {
+test("manifest host access is limited to supported sites and LLM providers", () => {
   assert.deepEqual(manifest.host_permissions.sort(), [
     "https://ai-gateway.vercel.sh/*",
     "https://chat.deepseek.com/*",
     "https://chatgpt.com/*",
-    "https://claude.ai/*"
+    "https://claude.ai/*",
+    "https://openrouter.ai/*"
   ]);
 });
 

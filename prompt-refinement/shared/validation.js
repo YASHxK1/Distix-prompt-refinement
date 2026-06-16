@@ -12,28 +12,46 @@
     return { ok: true, value };
   }
 
-  function validateApiKey(value) {
-    if (typeof value !== "string" || value.trim().length === 0) {
-      return { ok: false, code: "MISSING_API_KEY", message: "Add your AI Gateway API key in Settings." };
-    }
-    if (value.trim().length < 12 || /\s/.test(value.trim())) {
-      return { ok: false, code: "INVALID_API_KEY", message: "The saved API key appears invalid. Update it in Settings." };
-    }
-    return { ok: true, value: value.trim() };
+  function providerLabel(provider) {
+    if (provider === "openrouter") return "OpenRouter";
+    return "Vercel AI Gateway";
   }
 
-  function validateModel(value) {
+  function validateProvider(value) {
+    if (value === "vercel" || value === "openrouter") {
+      return { ok: true, value };
+    }
+    return { ok: false, code: "INVALID_PROVIDER", message: "Choose Vercel or OpenRouter in Settings." };
+  }
+
+  function validateApiKey(value, provider) {
+    const label = providerLabel(provider);
     if (typeof value !== "string" || value.trim().length === 0) {
-      return { ok: false, code: "MISSING_MODEL", message: "Choose an AI Gateway model in Settings." };
+      return { ok: false, code: "MISSING_API_KEY", message: `Add your ${label} API key in Settings.` };
+    }
+    const trimmed = value.trim();
+    if (trimmed.length < 12 || /\s/.test(trimmed)) {
+      return { ok: false, code: "INVALID_API_KEY", message: `The saved ${label} API key appears invalid. Update it in Settings.` };
+    }
+    return { ok: true, value: trimmed };
+  }
+
+  function validateModel(value, provider) {
+    const label = providerLabel(provider);
+    if (typeof value !== "string" || value.trim().length === 0) {
+      return { ok: false, code: "MISSING_MODEL", message: `Choose a ${label} model in Settings.` };
     }
     const model = value.trim();
     if (model.length > 160 || !MODEL_PATTERN.test(model)) {
-      return { ok: false, code: "INVALID_MODEL", message: "Use a Gateway model ID such as deepseek/deepseek-v4-pro." };
+      const example = provider === "openrouter"
+        ? "openai/gpt-4o"
+        : "deepseek/deepseek-v4-pro";
+      return { ok: false, code: "INVALID_MODEL", message: `Use an identifier such as ${example}.` };
     }
     return { ok: true, value: model };
   }
 
-  namespace.validation = { validatePrompt, validateApiKey, validateModel };
+  namespace.validation = { validatePrompt, validateProvider, validateApiKey, validateModel };
 
   if (typeof module !== "undefined") {
     module.exports = namespace.validation;

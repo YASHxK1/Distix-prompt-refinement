@@ -2,11 +2,12 @@ importScripts(
   "../shared/constants.js",
   "../shared/system-prompt.js",
   "../shared/validation.js",
-  "../shared/gateway.js"
+  "../shared/gateway.js",
+  "../shared/providers.js"
 );
 
-const { constants, systemPrompt, validation, gateway } = PromptRefinement;
-const { API_KEY, MODEL } = constants.STORAGE_KEYS;
+const { constants, systemPrompt, validation, gateway, providers } = PromptRefinement;
+const { PROVIDER } = constants.STORAGE_KEYS;
 
 async function restrictStorageAccess() {
   await Promise.all([
@@ -16,28 +17,51 @@ async function restrictStorageAccess() {
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  restrictStorageAccess().catch(() => {});
-  chrome.storage.sync.get(MODEL).then((stored) => {
-    if (!stored[MODEL]) {
-      return chrome.storage.sync.set({ [MODEL]: constants.DEFAULT_MODEL });
+  restrictStorageAccess().catch(() => { });
+  chrome.storage.sync.get([
+    PROVIDER,
+    constants.STORAGE_KEYS.MODEL,
+    constants.STORAGE_KEYS.OPENROUTER_MODEL
+  ]).then((stored) => {
+    const defaults = {};
+    if (!stored[PROVIDER]) defaults[PROVIDER] = constants.DEFAULT_PROVIDER;
+    if (!stored[constants.STORAGE_KEYS.MODEL]) {
+      defaults[constants.STORAGE_KEYS.MODEL] = constants.DEFAULT_MODEL;
     }
-  }).catch(() => {});
+    if (!stored[constants.STORAGE_KEYS.OPENROUTER_MODEL]) {
+      defaults[constants.STORAGE_KEYS.OPENROUTER_MODEL] = constants.DEFAULT_OPENROUTER_MODEL;
+    }
+    if (Object.keys(defaults).length) return chrome.storage.sync.set(defaults);
+  }).catch(() => { });
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  restrictStorageAccess().catch(() => {});
+  restrictStorageAccess().catch(() => { });
 });
 
-restrictStorageAccess().catch(() => {});
+restrictStorageAccess().catch(() => { });
 
 async function readSettings() {
-  const [local, sync] = await Promise.all([
-    chrome.storage.local.get(API_KEY),
-    chrome.storage.sync.get(MODEL)
+  const sync = await chrome.storage.sync.get([
+    PROVIDER,
+    constants.STORAGE_KEYS.MODEL,
+    constants.STORAGE_KEYS.OPENROUTER_MODEL
   ]);
+  const provider = providers.getProvider(sync[PROVIDER]);
+  const local = await chrome.storage.local.get(provider.apiKeyStorageKey);
+  const apiKey = local[provider.apiKeyStorageKey];
+  const model = sync[provider.modelStorageKey] || provider.defaultModel;
+
+  console.log("[readSettings]", {
+    rawProvider: sync[PROVIDER],
+    resolvedProvider: provider.id,
+    model: model
+  });
+
   return {
-    apiKey: local[API_KEY],
-    model: sync[MODEL] || constants.DEFAULT_MODEL
+    provider: provider.id,
+    apiKey: apiKey,
+    model: model
   };
 }
 
@@ -64,67 +88,91 @@ async function refinePrompt(prompt) {
   if (!promptCheck.ok) return { ok: false, error: promptCheck };
 
   const settings = await readSettings();
-  const keyCheck = validation.validateApiKey(settings.apiKey);
-  if (!keyCheck.ok) return { ok: false, error: keyCheck };
+  const keyCheck = validation.validateApiKey(settings.apiKey, settings.provider);
+  if (!keyCheck.ok) {
+    console.error("[refinePrompt] key validation failed:", keyCheck);
+    return { ok: false, error: keyCheck };
+  }
 
-  const modelCheck = validation.validateModel(settings.model);
-  if (!modelCheck.ok) return { ok: false, error: modelCheck };
+  const modelCheck = validation.validateModel(settings.model, settings.provider);
+  if (!modelCheck.ok) {
+    console.error("[refinePrompt] model validation failed:", modelCheck);
+    return { ok: false, error: modelCheck };
+  }
 
   try {
-    const response = await fetchWithTimeout(`${constants.GATEWAY_BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${keyCheck.value}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: modelCheck.value,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: promptCheck.value }
-        ],
-        stream: false
-      })
-    });
+    const request = providers.buildCompletionRequest(
+      settings.provider,
+      keyCheck.value,
+      modelCheck.value,
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: promptCheck.value }
+      ]
+    );
+    console.log("[refinePrompt] sending completion request:", { url: request.url, method: request.options.method });
+    const response = await fetchWithTimeout(request.url, request.options);
     const payload = await readJson(response);
+    console.log("[refinePrompt] response:", { status: response.status, ok: response.ok, hasOutput: !!payload?.output });
     if (!response.ok) {
-      return { ok: false, error: gateway.mapHttpError(response.status, payload) };
+      console.error("[refinePrompt] non-ok response:", { status: response.status, payload });
+      return { ok: false, error: gateway.mapHttpError(response.status, payload, settings.provider) };
     }
-    return gateway.parseCompletion(payload);
+    return gateway.parseCompletion(payload, settings.provider);
   } catch (error) {
+    console.error("[refinePrompt] caught error:", { name: error?.name, message: error?.message, stack: error?.stack });
     if (error?.name === "AbortError") {
       return { ok: false, error: { code: "TIMEOUT", message: "The request timed out. Try again." } };
     }
-    return { ok: false, error: { code: "NETWORK_ERROR", message: "Could not reach AI Gateway. Check your connection and try again." } };
+    const label = providers.getProvider(settings.provider).label;
+    return { ok: false, error: { code: "NETWORK_ERROR", message: `Could not reach ${label}. Check your connection and try again.` } };
   }
 }
 
 async function testConnection() {
   const settings = await readSettings();
-  const keyCheck = validation.validateApiKey(settings.apiKey);
-  if (!keyCheck.ok) return { ok: false, error: keyCheck };
+  const keyCheck = validation.validateApiKey(settings.apiKey, settings.provider);
+  if (!keyCheck.ok) {
+    console.error("[testConnection] key validation failed:", keyCheck);
+    return { ok: false, error: keyCheck };
+  }
 
-  const modelCheck = validation.validateModel(settings.model);
-  if (!modelCheck.ok) return { ok: false, error: modelCheck };
+  const modelCheck = validation.validateModel(settings.model, settings.provider);
+  if (!modelCheck.ok) {
+    console.error("[testConnection] model validation failed:", modelCheck);
+    return { ok: false, error: modelCheck };
+  }
 
   try {
-    const modelPath = modelCheck.value.split("/").map(encodeURIComponent).join("/");
-    const response = await fetchWithTimeout(`${constants.GATEWAY_BASE_URL}/models/${modelPath}`, {
-      headers: {
-        "Authorization": `Bearer ${keyCheck.value}`,
-        "Content-Type": "application/json"
+    const requests = providers.buildConnectionRequests(settings.provider, keyCheck.value, modelCheck.value);
+    for (const request of requests) {
+      console.log("[testConnection] sending request:", { kind: request.kind, url: request.url });
+      const response = await fetchWithTimeout(request.url, request.options);
+      const payload = await readJson(response);
+      console.log("[testConnection] response:", { kind: request.kind, status: response.status, ok: response.ok, payload });
+      if (!response.ok) {
+        return { ok: false, error: gateway.mapHttpError(response.status, payload, settings.provider) };
       }
-    });
-    const payload = await readJson(response);
-    if (!response.ok) {
-      return { ok: false, error: gateway.mapHttpError(response.status, payload) };
+      if (request.kind === "key" && gateway.hasExhaustedCredits(payload)) {
+        console.error("[testConnection] credits exhausted:", payload?.data);
+        return {
+          ok: false,
+          error: {
+            code: "BUDGET_EXHAUSTED",
+            message: "OpenRouter credits are exhausted. Add credits or increase the key limit."
+          }
+        };
+      }
     }
-    return { ok: true, model: modelCheck.value };
+    console.log("[testConnection] success");
+    return { ok: true, provider: settings.provider, model: modelCheck.value };
   } catch (error) {
+    console.error("[testConnection] caught error:", { name: error?.name, message: error?.message, stack: error?.stack });
     if (error?.name === "AbortError") {
       return { ok: false, error: { code: "TIMEOUT", message: "The connection test timed out." } };
     }
-    return { ok: false, error: { code: "NETWORK_ERROR", message: "Could not reach AI Gateway." } };
+    const label = providers.getProvider(settings.provider).label;
+    return { ok: false, error: { code: "NETWORK_ERROR", message: `Could not reach ${label}.` } };
   }
 }
 

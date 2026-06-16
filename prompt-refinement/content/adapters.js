@@ -77,6 +77,7 @@
       id: config.id,
       matches: () => config.hosts.includes(location.hostname),
       findComposer: () => queryFirst(config.composerSelectors),
+      buttonPlacement: config.buttonPlacement || { leftOffset: 0, topOffset: 16 },
       getText,
       replaceText,
       findMount(composer) {
@@ -99,7 +100,8 @@
         "[data-testid='composer-footer-actions']",
         "[class*='composer-footer']",
         "[class*='composer'] [class*='actions']"
-      ]
+      ],
+      buttonPlacement: { leftOffset: 32, topOffset: 16 }
     }),
     createAdapter({
       id: "claude",
@@ -113,7 +115,8 @@
         "[data-testid*='composer'] [class*='items-center']",
         "fieldset [class*='items-center']",
         "fieldset"
-      ]
+      ],
+      buttonPlacement: { leftOffset: 10, topOffset: 20 }
     }),
     createAdapter({
       id: "deepseek",
@@ -127,7 +130,8 @@
         "textarea ~ div",
         "[class*='input'] [class*='button']",
         "[class*='composer']"
-      ]
+      ],
+      buttonPlacement: { leftOffset: -15, topOffset: 2.5 }
     })
   ];
 

@@ -8,9 +8,9 @@ This document explains how the extension backend works. The backend is the Manif
 | --- | --- |
 | Content script | Reads and replaces prompts on supported websites. It never receives the API key. |
 | Popup | Sends standalone prompts to the backend and displays the result. |
-| Options page | Saves the API key and model, clears the key, and requests connection tests. |
-| Service worker | Reads settings, validates requests, calls Vercel AI Gateway, and normalizes responses. |
-| Vercel AI Gateway | Authenticates the key and routes requests to the selected AI model. |
+| Options page | Selects the provider, saves provider-specific keys/models, clears the active key, and requests connection tests. |
+| Service worker | Reads active provider settings, validates requests, calls Vercel or OpenRouter, and normalizes responses. |
+| LLM provider | Authenticates the active key and routes requests to the selected AI model. |
 
 ## Main Backend Flowchart
 
@@ -23,7 +23,7 @@ flowchart TD
     B -->|Unknown| Z[Ignore message]
 
     C -->|Invalid| E[Return normalized error]
-    C -->|Valid| D[Read API key from local storage<br/>Read model from sync storage]
+    C -->|Valid| D[Read provider and model from sync storage<br/>Read matching API key from local storage]
 
     D --> F[Validate API key]
     F -->|Invalid or missing| E
@@ -33,7 +33,7 @@ flowchart TD
 
     H --> I[Add fixed system instruction]
     I --> J[Add original prompt as user message]
-    J --> K[POST to Vercel AI Gateway<br/>30-second timeout]
+    J --> K[POST to selected provider<br/>30-second timeout]
 
     K -->|Network failure| N[Return NETWORK_ERROR]
     K -->|Timeout| O[Return TIMEOUT]
@@ -46,7 +46,7 @@ flowchart TD
 
     T1 --> T2[Validate API key and model]
     T2 -->|Invalid| E
-    T2 -->|Valid| T3[GET selected model endpoint<br/>30-second timeout]
+    T2 -->|Valid| T3[Run provider-specific key/model checks<br/>30-second timeout]
     T3 -->|Failure| P
     T3 -->|Success| T4[Return connection success]
 ```
@@ -59,7 +59,7 @@ sequenceDiagram
     participant SW as Service Worker
     participant LS as chrome.storage.local
     participant SS as chrome.storage.sync
-    participant GW as Vercel AI Gateway
+    participant GW as Selected Provider
     participant Model as Selected Model Provider
 
     UI->>SW: REFINE_PROMPT with prompt text
@@ -72,7 +72,7 @@ sequenceDiagram
         SS-->>SW: Model ID
     end
     SW->>SW: Validate API key and model
-    SW->>GW: POST /v1/chat/completions
+    SW->>GW: POST provider chat/completions endpoint
     Note over SW,GW: Authorization header contains the API key
     GW->>Model: Route completion request
     Model-->>GW: Refined prompt
@@ -81,7 +81,7 @@ sequenceDiagram
     SW-->>UI: { ok: true, text }
 ```
 
-The request body contains:
+Both providers receive the same OpenAI-compatible request body:
 
 ```json
 {
@@ -120,8 +120,8 @@ flowchart LR
 
 Storage is divided by purpose:
 
-- `chrome.storage.local`: stores the API key on the current device.
-- `chrome.storage.sync`: stores the selected model and can follow the user's Chrome sync settings.
+- `chrome.storage.local`: stores separate Vercel and OpenRouter API keys on the current device.
+- `chrome.storage.sync`: stores the selected provider and separate provider models.
 - `TRUSTED_CONTEXTS`: prevents content scripts from directly reading either storage area.
 
 The content script sends only the prompt to the service worker. The service worker reads the key itself and never includes it in its response.
@@ -130,7 +130,7 @@ The content script sends only the prompt to the service worker. The service work
 
 The Options page first saves the values currently displayed in the form. It then sends `TEST_CONNECTION` to the service worker.
 
-The service worker:
+For Vercel, the service worker:
 
 1. Reads the saved API key and model.
 2. Validates both values.
@@ -143,7 +143,9 @@ The service worker:
 
 5. Returns either the validated model ID or a normalized error.
 
-The test does not send a user prompt.
+For OpenRouter, it validates the key with `GET https://openrouter.ai/api/v1/key`, checks remaining key credits, and validates the model with `GET https://openrouter.ai/api/v1/model/<provider>/<model>`.
+
+Neither connection test sends a user prompt or requests a model completion.
 
 ## Error Mapping
 
@@ -158,7 +160,7 @@ The backend converts implementation and provider errors into stable extension er
 | HTTP 401 or 403 | `AUTH_FAILED` |
 | HTTP 402 | `BUDGET_EXHAUSTED` |
 | HTTP 429 | `RATE_LIMITED` |
-| HTTP 5xx | `GATEWAY_UNAVAILABLE` |
+| HTTP 5xx | `GATEWAY_UNAVAILABLE` or `PROVIDER_UNAVAILABLE` |
 | Request exceeds 30 seconds | `TIMEOUT` |
 | Fetch fails | `NETWORK_ERROR` |
 | Empty or malformed completion | `EMPTY_RESPONSE` |
@@ -189,7 +191,7 @@ flowchart LR
     CS[Content script]
     SW[Trusted service worker]
     Storage[Restricted Chrome storage]
-    Gateway[Vercel AI Gateway]
+    Gateway[Selected provider]
 
     Page <--> CS
     CS -->|Prompt only| SW

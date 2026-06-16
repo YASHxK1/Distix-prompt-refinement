@@ -23,14 +23,15 @@
 - Confirm empty prompts, bad keys, invalid models, 401/403, 402, 429, timeouts, and malformed responses preserve the original prompt.
 - Confirm editing the prompt while refinement is running preserves the newer text.
 - Test popup refinement, comparison, copying, errors, and Settings navigation.
-- Test Save, Clear key, and Test connection.
-- Reload the extension and restart Chrome to verify local key and synced model persistence.
+- Test Save, Clear key, provider switching, and Test connection for Vercel and OpenRouter.
+- Confirm each provider retains its own local key and synced model after switching, reloading the extension, and restarting Chrome.
 - Inspect service-worker and content-script consoles for errors.
 
 ## Permission justification
 
-- `storage`: stores the user's API key locally and selected model in sync storage.
+- `storage`: stores provider-specific API keys locally and the active provider/models in sync storage.
 - Supported-site host access: mounts and operates the composer Refine control.
 - `https://ai-gateway.vercel.sh/*`: sends explicit refinement requests from the service worker.
+- `https://openrouter.ai/*`: sends explicit refinement requests when OpenRouter is selected.
 
 No `activeTab`, `scripting`, analytics, history, clipboard permission, or remotely hosted code is used.

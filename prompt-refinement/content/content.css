@@ -11,11 +11,12 @@
   flex: 0 0 auto;
   font: 600 12px/1 system-ui, sans-serif;
   justify-content: center;
-  margin: 4px 6px;
+  margin: 0;
   min-height: 30px;
   padding: 8px 13px;
+  position: fixed;
   white-space: nowrap;
-  z-index: 20;
+  z-index: 2147483646;
 }
 
 .prompt-refinement-button:hover {

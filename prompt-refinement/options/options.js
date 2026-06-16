@@ -1,28 +1,62 @@
 (function initOptions() {
-  const { constants, validation, ui } = PromptRefinement;
-  const { API_KEY, MODEL } = constants.STORAGE_KEYS;
+  const { constants, providers, validation, ui } = PromptRefinement;
+  const { PROVIDER } = constants.STORAGE_KEYS;
   const form = document.getElementById("settings-form");
+  const providerSelect = document.getElementById("provider");
   const apiKey = document.getElementById("api-key");
+  const apiKeyLabel = document.getElementById("api-key-label");
   const model = document.getElementById("model");
+  const modelLabel = document.getElementById("model-label");
+  const modelHint = document.getElementById("model-hint");
   const keyState = document.getElementById("key-state");
   const status = document.getElementById("status");
   const testButton = document.getElementById("test");
   const clearButton = document.getElementById("clear-key");
 
-  async function loadSettings() {
+  function updateProviderCopy(provider) {
+    apiKeyLabel.textContent = `${provider.label} API key`;
+    modelLabel.textContent = `${provider.label} model ID`;
+    model.placeholder = provider.defaultModel;
+
+    if (provider.id === constants.PROVIDERS.OPENROUTER) {
+      modelHint.textContent = "Use a provider/model identifier, for example openai/gpt-4o, anthropic/claude-3.5-sonnet, or google/gemini-2.0-flash.";
+    } else {
+      modelHint.textContent = "Use a provider/model identifier, for example deepseek/deepseek-v4-pro.";
+    }
+  }
+
+  async function loadProviderSettings(providerId) {
+    const provider = providers.getProvider(providerId);
     const [local, sync] = await Promise.all([
-      chrome.storage.local.get(API_KEY),
-      chrome.storage.sync.get(MODEL)
+      chrome.storage.local.get(provider.apiKeyStorageKey),
+      chrome.storage.sync.get(provider.modelStorageKey)
     ]);
-    const hasKey = Boolean(local[API_KEY]);
+    const storedKey = local[provider.apiKeyStorageKey];
+    const hasKey = typeof storedKey === "string" && storedKey.trim().length > 0;
+    updateProviderCopy(provider);
     apiKey.value = "";
     apiKey.placeholder = hasKey ? "Saved key (enter a new value to replace)" : "Enter your API key";
-    keyState.textContent = hasKey ? "An API key is saved on this device." : "No API key is saved.";
-    model.value = sync[MODEL] || constants.DEFAULT_MODEL;
+    keyState.textContent = hasKey
+      ? `A ${provider.label} API key is saved on this device.`
+      : `No ${provider.label} API key is saved.`;
+    model.value = sync[provider.modelStorageKey] || provider.defaultModel;
+  }
+
+  async function loadSettings() {
+    const sync = await chrome.storage.sync.get(PROVIDER);
+    const provider = providers.getProvider(sync[PROVIDER]);
+    providerSelect.value = provider.id;
+    await loadProviderSettings(provider.id);
   }
 
   async function saveSettings() {
-    const modelCheck = validation.validateModel(model.value);
+    const providerCheck = validation.validateProvider(providerSelect.value);
+    if (!providerCheck.ok) {
+      ui.setStatus(status, providerCheck.message, "error");
+      return false;
+    }
+    const provider = providers.getProvider(providerCheck.value);
+    const modelCheck = validation.validateModel(model.value, provider.id);
     if (!modelCheck.ok) {
       ui.setStatus(status, modelCheck.message, "error");
       model.focus();
@@ -31,18 +65,29 @@
 
     const pendingKey = apiKey.value.trim();
     if (pendingKey) {
-      const keyCheck = validation.validateApiKey(pendingKey);
+      const keyCheck = validation.validateApiKey(pendingKey, provider.id);
       if (!keyCheck.ok) {
         ui.setStatus(status, keyCheck.message, "error");
         apiKey.focus();
         return false;
       }
-      await chrome.storage.local.set({ [API_KEY]: keyCheck.value });
+      await chrome.storage.local.set({ [provider.apiKeyStorageKey]: keyCheck.value });
     }
-    await chrome.storage.sync.set({ [MODEL]: modelCheck.value });
-    await loadSettings();
+
+    var syncPayload = {};
+    syncPayload[PROVIDER] = provider.id;
+    syncPayload[provider.modelStorageKey] = modelCheck.value;
+
+    await chrome.storage.sync.set(syncPayload);
+    await loadProviderSettings(provider.id);
     return true;
   }
+
+  providerSelect.addEventListener("change", async () => {
+    const provider = providers.getProvider(providerSelect.value);
+    await loadProviderSettings(provider.id);
+    ui.setStatus(status, "", "");
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -51,9 +96,10 @@
   });
 
   clearButton.addEventListener("click", async () => {
-    await chrome.storage.local.remove(API_KEY);
-    await loadSettings();
-    ui.setStatus(status, "API key cleared.", "success");
+    const provider = providers.getProvider(providerSelect.value);
+    await chrome.storage.local.remove(provider.apiKeyStorageKey);
+    await loadProviderSettings(provider.id);
+    ui.setStatus(status, `${provider.label} API key cleared.`, "success");
   });
 
   testButton.addEventListener("click", async () => {
@@ -69,7 +115,8 @@
         ui.setStatus(status, response?.error?.message || "Connection test failed.", "error");
         return;
       }
-      ui.setStatus(status, `Connection succeeded for ${response.model}.`, "success");
+      const provider = providers.getProvider(response.provider || providerSelect.value);
+      ui.setStatus(status, `${provider.label} connection succeeded for ${response.model}.`, "success");
     } catch {
       ui.setStatus(status, "Connection test failed. Try again.", "error");
     } finally {

@@ -9,28 +9,48 @@
     return "";
   }
 
-  function mapHttpError(status, payload) {
+  function getProviderLabel(provider) {
+    if (provider === "openrouter") return "OpenRouter";
+    return "AI Gateway";
+  }
+
+  function mapHttpError(status, payload, provider) {
+    const label = getProviderLabel(provider);
     if (status === 401 || status === 403) {
-      return { code: "AUTH_FAILED", message: "Authentication failed. Check your AI Gateway API key." };
+      return { code: "AUTH_FAILED", message: `Authentication failed. Check your ${label} API key.` };
     }
     if (status === 402) {
-      return { code: "BUDGET_EXHAUSTED", message: "The AI Gateway budget is exhausted. Check billing or budget limits." };
+      return { code: "BUDGET_EXHAUSTED", message: `${label} credits are exhausted. Check billing or budget limits.` };
+    }
+    if (status === 408) {
+      return { code: "TIMEOUT", message: `The ${label} request timed out. Try again.` };
     }
     if (status === 429) {
-      return { code: "RATE_LIMITED", message: "AI Gateway is rate limiting requests. Wait a moment and try again." };
+      return { code: "RATE_LIMITED", message: `${label} is rate limiting requests. Wait a moment and try again.` };
     }
     if (status >= 500) {
-      return { code: "GATEWAY_UNAVAILABLE", message: "AI Gateway is temporarily unavailable. Try again shortly." };
+      return {
+        code: (provider === "vercel" || !provider) ? "GATEWAY_UNAVAILABLE" : "PROVIDER_UNAVAILABLE",
+        message: `${label} is temporarily unavailable. Try again shortly.`
+      };
     }
 
     const detail = extractErrorMessage(payload).toLowerCase();
-    if (detail.includes("model")) {
+    if (status === 404 || detail.includes("model")) {
       return { code: "INVALID_MODEL", message: "The selected model is unavailable or invalid. Update it in Settings." };
     }
-    return { code: "GATEWAY_REQUEST_FAILED", message: "AI Gateway rejected the request. Check the model and try again." };
+    return {
+      code: (provider === "vercel" || !provider) ? "GATEWAY_REQUEST_FAILED" : "PROVIDER_REQUEST_FAILED",
+      message: `${label} rejected the request. Check the model and try again.`
+    };
   }
 
-  function parseCompletion(payload) {
+  function hasExhaustedCredits(payload) {
+    const remaining = payload?.data?.limit_remaining;
+    return typeof remaining === "number" && remaining <= 0;
+  }
+
+  function parseCompletion(payload, provider) {
     const content = payload?.choices?.[0]?.message?.content;
     let text = "";
 
@@ -55,7 +75,7 @@
     return { ok: true, text: text.trim() };
   }
 
-  namespace.gateway = { extractErrorMessage, mapHttpError, parseCompletion };
+  namespace.gateway = { extractErrorMessage, mapHttpError, hasExhaustedCredits, parseCompletion };
 
   if (typeof module !== "undefined") {
     module.exports = namespace.gateway;

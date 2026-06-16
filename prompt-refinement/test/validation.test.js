@@ -24,3 +24,27 @@ test("requires provider/model identifiers", () => {
     value: "deepseek/deepseek-v4-pro"
   });
 });
+
+test("validates supported providers and OpenRouter model variants", () => {
+  assert.deepEqual(validation.validateProvider("openrouter"), { ok: true, value: "openrouter" });
+  assert.equal(validation.validateProvider("other").code, "INVALID_PROVIDER");
+  assert.equal(validation.validateModel("google/gemini-2.0-flash", "openrouter").ok, true);
+  assert.equal(validation.validateModel("meta-llama/llama-3.3-70b-instruct:free", "openrouter").ok, true);
+});
+
+test("rejects disabled Bedrock provider", () => {
+  assert.equal(validation.validateProvider("bedrock").code, "INVALID_PROVIDER");
+});
+
+test("does not log API key details during validation", () => {
+  const originalWarn = console.warn;
+  const calls = [];
+  console.warn = (...args) => calls.push(args);
+  try {
+    validation.validateApiKey("too short");
+    validation.validateApiKey("example-key-value-123");
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.deepEqual(calls, []);
+});

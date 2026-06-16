@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "prompt-refinement",
   "version": "1.0.0",
-  "description": "Refine prompts in ChatGPT, Claude, DeepSeek, or the extension popup using Vercel AI Gateway.",
+  "description": "Refine prompts in ChatGPT, Claude, DeepSeek, or the extension popup using Vercel or OpenRouter.",
   "minimum_chrome_version": "102",
   "permissions": [
     "storage"
@@ -11,7 +11,8 @@
     "https://chatgpt.com/*",
     "https://claude.ai/*",
     "https://chat.deepseek.com/*",
-    "https://ai-gateway.vercel.sh/*"
+    "https://ai-gateway.vercel.sh/*",
+    "https://openrouter.ai/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js"

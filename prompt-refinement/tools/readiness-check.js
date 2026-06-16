@@ -18,7 +18,8 @@ const expectedHosts = new Set([
   "https://chatgpt.com/*",
   "https://claude.ai/*",
   "https://chat.deepseek.com/*",
-  "https://ai-gateway.vercel.sh/*"
+  "https://ai-gateway.vercel.sh/*",
+  "https://openrouter.ai/*"
 ]);
 check(manifest.host_permissions.length === expectedHosts.size, "unexpected host permission count");
 for (const host of manifest.host_permissions) {

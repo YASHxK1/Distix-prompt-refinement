@@ -36,13 +36,30 @@ form,
   padding: 24px;
 }
 
-input {
+input,
+select {
   margin-top: 8px;
 }
 
 label:not(:first-child) {
   display: block;
   margin-top: 22px;
+}
+
+select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  display: block;
+  line-height: 1.45;
+  padding: 11px 12px;
+  width: 100%;
+}
+
+select:focus {
+  border-color: #60a5fa;
+  outline: 3px solid rgb(96 165 250 / 20%);
 }
 
 .hint {
